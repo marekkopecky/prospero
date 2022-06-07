@@ -38,9 +38,11 @@ import org.wildfly.prospero.api.exceptions.ArtifactResolutionException;
 import org.wildfly.prospero.api.exceptions.OperationException;
 import org.wildfly.prospero.galleon.GalleonUtils;
 import org.wildfly.prospero.galleon.ChannelMavenArtifactRepositoryManager;
+import org.wildfly.prospero.galleon.LocalMavenCacheManager;
 import org.wildfly.prospero.model.ChannelRef;
 import org.wildfly.prospero.wfchannel.ChannelRefUpdater;
 import org.wildfly.prospero.wfchannel.MavenSessionManager;
+import org.wildfly.prospero.wfchannel.WfChannelMavenResolver;
 import org.wildfly.prospero.wfchannel.WfChannelMavenResolverFactory;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
@@ -67,14 +69,27 @@ public class Update {
     private final Console console;
     private final WfChannelMavenResolverFactory factory;
     private final MavenSessionManager mavenSessionManager;
+    private final Path installDir;
+    private final LocalMavenCacheManager localMavenCacheManager;
 
     public Update(Path installDir, MavenSessionManager mavenSessionManager, Console console) throws ProvisioningException, OperationException {
         this.metadata = new InstallationMetadata(installDir);
+        this.installDir = installDir;
 
         this.mavenSessionManager = mavenSessionManager;
         final List<Channel> channels = mapToChannels(new ChannelRefUpdater(this.mavenSessionManager)
                 .resolveLatest(metadata.getChannels(), metadata.getRepositories()));
-        final List<RemoteRepository> repositories = metadata.getRepositories();
+        List<RemoteRepository> repositories = metadata.getRepositories();
+
+        // regenerate temp repo
+        localMavenCacheManager = new LocalMavenCacheManager(installDir.resolve(".installation"));
+        final Path rebuildRepoPath = localMavenCacheManager.rebuildRepo();
+        // add temp repo to the list of repositories
+        List<RemoteRepository> newRepositories = new ArrayList<>();
+        newRepositories.add(new RemoteRepository.Builder("existing-repo", "default", rebuildRepoPath.toUri().toString()).build());
+        newRepositories.addAll(repositories);
+        repositories = newRepositories;
+
 
         this.factory = new WfChannelMavenResolverFactory(mavenSessionManager, repositories);
         this.channelSession = new ChannelSession(channels, factory);
@@ -101,7 +116,7 @@ public class Update {
         return channels;
     }
 
-    public void doUpdateAll() throws ProvisioningException, MetadataException, ArtifactResolutionException {
+    public void doUpdateAll() throws ProvisioningException, OperationException {
         final UpdateSet updateSet = findUpdates();
 
         console.updatesFound(updateSet.fpUpdates.getUpdates(), updateSet.artifactUpdates);
@@ -118,6 +133,8 @@ public class Update {
         metadata.writeFiles();
 
         console.updatesComplete();
+
+        localMavenCacheManager.generateCacheRepository(mavenSessionManager.getProvisioningRepo().toAbsolutePath(), ((WfChannelMavenResolver)factory.create()).getResolvedArtifacts());
     }
 
     public void listUpdates() throws ArtifactResolutionException, ProvisioningException {

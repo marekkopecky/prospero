@@ -35,10 +35,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.wildfly.prospero.galleon.LocalMavenCacheManager;
 import org.wildfly.prospero.galleon.ProvisioningConfigUpdater;
 import org.wildfly.prospero.model.ChannelRef;
 import org.wildfly.prospero.wfchannel.ChannelRefUpdater;
 import org.wildfly.prospero.wfchannel.MavenSessionManager;
+import org.wildfly.prospero.wfchannel.WfChannelMavenResolver;
 import org.wildfly.prospero.wfchannel.WfChannelMavenResolverFactory;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.jboss.galleon.ProvisioningException;
@@ -115,6 +117,10 @@ public class Provision {
         }
 
         writeProsperoMetadata(installDir, repoManager, updatedRefs, repositories);
+
+        // cache wildfly-ee-galleon-pack and wildfly-galleon-plugins
+        final LocalMavenCacheManager localMavenCacheManager = new LocalMavenCacheManager(installDir.resolve(".installation"));
+        localMavenCacheManager.generateCacheRepository(mavenSessionManager.getProvisioningRepo().toAbsolutePath(), ((WfChannelMavenResolver)factory.create()).getResolvedArtifacts());
     }
 
     /**

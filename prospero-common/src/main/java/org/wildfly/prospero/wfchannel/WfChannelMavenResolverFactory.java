@@ -26,14 +26,16 @@ import java.util.List;
 public class WfChannelMavenResolverFactory implements MavenVersionsResolver.Factory {
     private final MavenSessionManager mavenSessionManager;
     private final List<RemoteRepository> remoteRepositories;
+    private final WfChannelMavenResolver resolver;
 
     public WfChannelMavenResolverFactory(MavenSessionManager mavenSessionManager, List<RemoteRepository> remoteRepositories) throws ProvisioningException {
         this.mavenSessionManager = mavenSessionManager;
         this.remoteRepositories = remoteRepositories;
+        this.resolver =  new WfChannelMavenResolver(remoteRepositories, false, mavenSessionManager);
     }
 
     @Override
     public MavenVersionsResolver create() {
-        return new WfChannelMavenResolver(remoteRepositories, false, mavenSessionManager);
+        return this.resolver;
     }
 }

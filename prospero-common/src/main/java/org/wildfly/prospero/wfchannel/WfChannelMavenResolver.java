@@ -35,6 +35,7 @@ import org.wildfly.channel.UnresolvedMavenArtifactException;
 import org.wildfly.channel.spi.MavenVersionsResolver;
 
 import java.io.File;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -51,10 +52,16 @@ public class WfChannelMavenResolver implements MavenVersionsResolver {
 
     private final List<RemoteRepository> remoteRepositories;
 
+    private Set<String> resolvedArtifacts = new HashSet<>();
+
     WfChannelMavenResolver(List<RemoteRepository> mavenRepositories, boolean resolveLocalCache, MavenSessionManager mavenSessionManager) {
         this.remoteRepositories = mavenRepositories;
         system = mavenSessionManager.newRepositorySystem();
         session = mavenSessionManager.newRepositorySystemSession(system, resolveLocalCache);
+    }
+
+    public Set<String> getResolvedArtifacts() {
+        return resolvedArtifacts;
     }
 
     @Override
@@ -88,6 +95,7 @@ public class WfChannelMavenResolver implements MavenVersionsResolver {
         request.setRepositories(remoteRepositories);
         try {
             ArtifactResult result = system.resolveArtifact(session, request);
+            resolvedArtifacts.add(String.format("%s:%s:%s:%s:%s", groupId, artifactId, classifier, extension, version));
             return result.getArtifact().getFile();
         } catch (ArtifactResolutionException e) {
             throw new UnresolvedMavenArtifactException("Unable to resolve artifact " + artifact, e);
