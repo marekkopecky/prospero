@@ -1,5 +1,12 @@
 #!/bin/sh
 
+set -x
+
+java -version
+which java
+echo $JAVA_HOME
+env
+
 DIRNAME=`dirname "$0"`
 GREP="grep"
 
@@ -83,6 +90,10 @@ JAVA_OPTS="$JAVA_OPTS -Dcom.ibm.jsse2.overrideDefaultTLS=true"
 # WFCORE-5216 - evaluate any eventual env variables
 JBOSS_MODULEPATH=$(eval echo \"${JBOSS_MODULEPATH}\")
 
+java -version
+which java
+echo $JAVA_HOME
+
 LOG_CONF=`echo $JAVA_OPTS | grep "logging.configuration"`
 if [ "x$LOG_CONF" = "x" ]; then
     exec "$JAVA" $JAVA_OPTS -Dlogging.configuration=file:"$JBOSS_HOME"/bin/jboss-cli-logging.properties -jar "$JBOSS_HOME"/jboss-modules.jar -mp "${JBOSS_MODULEPATH}" org.jboss.prospero "$@"
@@ -90,3 +101,5 @@ else
     echo "logging.configuration already set in JAVA_OPTS"
     exec "$JAVA" $JAVA_OPTS -jar "$JBOSS_HOME"/jboss-modules.jar -mp "${JBOSS_MODULEPATH}" org.jboss.prospero "$@"
 fi
+
+set +x
