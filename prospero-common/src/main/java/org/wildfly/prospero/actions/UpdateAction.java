@@ -17,8 +17,15 @@
 
 package org.wildfly.prospero.actions;
 
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
+import org.jboss.galleon.config.ProvisioningConfig;
+import org.jboss.galleon.xml.ProvisioningXmlWriter;
 import org.wildfly.prospero.api.InstallationMetadata;
 import org.wildfly.prospero.api.exceptions.MetadataException;
 import org.wildfly.prospero.api.exceptions.ArtifactResolutionException;
@@ -82,6 +89,22 @@ public class UpdateAction {
 
     protected void applyUpdates() throws ProvisioningException {
         final ProvisioningManager provMgr = galleonEnv.getProvisioningManager();
+
+        ByteArrayOutputStream output = null;
+        try {
+            ProvisioningConfig config = provMgr.getProvisioningConfig();
+            output = new ByteArrayOutputStream();
+            PrintWriter writer = new PrintWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8));
+            ProvisioningXmlWriter.getInstance().write(config, writer);
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+        try {
+            System.out.println(output.toString(StandardCharsets.UTF_8.name()));
+        } catch (UnsupportedEncodingException e) {
+            throw new IllegalStateException(e);
+        }
+
         GalleonUtils.executeGalleon(options -> provMgr.provision(provMgr.getProvisioningConfig(), options),
                 mavenSessionManager.getProvisioningRepo().toAbsolutePath());
 
